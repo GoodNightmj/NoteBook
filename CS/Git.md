@@ -104,3 +104,111 @@ $ git add README
 | `--graph`         | 在日志旁以 ASCII 图形显示分支与合并历史。                                              |
 | `--pretty`        | 使用其他格式显示历史提交信息。可用的选项包括 oneline、short、full、fuller 和 format（用来定义自己的格式）。 |
 | `--oneline`       | `--pretty=oneline --abbrev-commit` 合用的简写。                             |
+
+
+## 撤销操作
+
+用于提交完了才发现漏掉了几个文件没有添加，或者提交信息写错了。
+提交信息写错了
+```console
+$ git commit --amend
+```
+刚刚进行一次提交后立马执行，快照保存不变，只是更改了提交信息
+***
+提交完了才发现漏掉了几个文件没有添加
+该命令会将暂存区的文件全部提交，如果是第一种情况，即
+
+```console
+$ git commit -m 'initial commit'
+$ git add forgotten_file
+$ git commit --amend
+```
+
+## 远程仓库
+查看远程仓库：显示需要读写远程仓库使用的 Git 保存的简写与其对应的 URL。
+```console
+$ git remote -v
+origin	https://github.com/schacon/ticgit (fetch)
+origin	https://github.com/schacon/ticgit (push)
+```
+添加远程仓库：
+`git remote add <shortname> <url>`
+查看远程仓库的信息：
+`git remote show <name>`
+删除
+`git remote rm <name>`
+
+## git alias
+```console
+$ git config --global alias.<to> <from>
+```
+
+
+
+## Git 分支
+
+### 分支简介
+例子：
+假设现在有一个工作目录，里面包含了三个将要被暂存和提交的文件。 暂存操作会为每一个文件计算校验和（SHA-1 哈希算法），然后会把当前版本的文件快照保存到 Git 仓库中 （Git 使用 _blob_ 对象来保存它们），最终将校验和加入到暂存区域等待提交：
+```console
+$ git add README test.rb LICENSE
+$ git commit -m 'The initial commit of my project'
+```
+当使用 `git commit` 进行提交操作时，Git 会先计算每一个子目录（本例中只有项目根目录）的校验和， 然后在 Git 仓库中这些校验和保存为树对象。随后，Git 便会创建一个提交对象， 它除了包含上面提到的那些信息外，还包含指向这个树对象（项目根目录）的指针。 如此一来，Git 就可以在需要的时候重现此次保存的快照。
+Git 仓库中有五个对象：三个 _blob_ 对象（保存着文件快照）、一个 **树** 对象 （记录着目录结构和 blob 对象索引）以及一个 **提交** 对象（包含着指向前述树对象的指针和所有提交信息）。
+![image.png](https://raw.githubusercontent.com/GoodNightmj/PicGo/master/202411281329190.png)
+![image.png](https://raw.githubusercontent.com/GoodNightmj/PicGo/master/202411281415074.png)
+
+常见命令
+```
+git branch <name> 创建一个分支
+git branch -d <name> 删除某分支
+git checkout <name> 切换到某分支
+git checkout -b <name> 创建并切换到某分支
+
+```
+
+###  分支的新建与合并
+
+**当你新建和合并分支的时候，所有这一切都只发生在你本地的 Git 版本库中 —— 没有与服务器发生交互。**
+
+当切换分支的时候，Git 会重置你的工作目录，使其看起来像回到了你在那个分支上最后一次提交的样子。 Git 会自动添加、删除、修改文件以确保此时你的工作目录和这个分支最后一次提交时的样子一模一样。
+三种合并情况
+1. 合并master分支和hotfix分支![image.png](https://raw.githubusercontent.com/GoodNightmj/PicGo/master/202411281420411.png)
+```console
+$ git checkout master
+$ git merge hotfix
+Updating f42c576..3a0874c
+Fast-forward
+ index.html | 2 ++
+ 1 file changed, 2 insertions(+)
+```
+由于c4是c2的直接后继，那么 Git 在合并两者的时候， 只会简单的将指针向前推进（指针右移），因为这种情况下的合并操作没有需要解决的分歧——这就叫做 “快进（fast-forward）”。
+***
+2.合并master分支和iss53分支，对于这种开发历史从一个更早的地方开始分叉开来（diverged）。即`master` 分支所在提交并不是 `iss53` 分支所在提交的直接祖先，Git 不得不做一些额外的工作。 出现这种情况的时候，Git 会使用两个分支的末端所指的快照（`C4` 和 `C5`）以及这两个分支的公共祖先（`C2`），做一个简单的三方合并。
+![image.png](https://raw.githubusercontent.com/GoodNightmj/PicGo/master/202411281422880.png)
+![image.png](https://raw.githubusercontent.com/GoodNightmj/PicGo/master/202411281425831.png)
+和之前将分支指针向前推进所不同的是，Git 将此次三方合并的结果做了一个新的快照并且自动创建一个新的提交指向它。 这个被称作一次合并提交，它的特别之处在于他有不止一个父提交。
+
+***
+3.带有冲突的提交，即在两个不同的分支中，对同一个文件的同一个部分进行了不同的修改
+这种情况下，git会做出合并但不会进行提交，打开冲突文件会类似
+```html
+<<<<<<< HEAD:index.html
+<div id="footer">contact : email.support@github.com</div>
+=======
+<div id="footer">
+ please contact us at support@github.com
+</div>
+>>>>>>> iss53:index.html
+```
+解决冲突，你必须选择使用由 `=======` 分割的两部分中的一个，或者你也可以自行合并这些内容
+
+###  远程分支
+如果你在本地的 `master` 分支做了一些工作，在同一段时间内有其他人推送提交到 `git.ourcompany.com` 并且更新了它的 `master` 分支，这就是说你们的提交历史已走向不同的方向。 即便这样，只要你保持不与 `origin` 服务器连接（并拉取数据），你的 `origin/master` 指针就不会移动。
+![image.png](https://raw.githubusercontent.com/GoodNightmj/PicGo/master/202411281557861.png)
+如果要与给定的远程仓库同步数据，运行 `git fetch <remote>` 命令（在本例中为 `git fetch origin`）。  从中抓取本地没有的数据，并且更新本地数据库，移动 `origin/master` 指针到更新之后的位置。
+![image.png](https://raw.githubusercontent.com/GoodNightmj/PicGo/master/202411281557887.png)
+#### 推送
+如果希望和别人一起在名为 `serverfix` 的分支上工作，你可以像推送第一个分支那样推送它。 运行 
+`git push <remote> <branch>`=`git push <remote> <local branch > <remote branch> ` 相同 
